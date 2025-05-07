@@ -1,0 +1,46 @@
+import logging
+import requests
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
+BOT_TOKEN = 'YOUR_BOT_TOKEN'  # Replace with your bot's token
+
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Send /leech <direct_url> to download and upload the file here.")
+
+async def leech(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if len(context.args) == 0:
+        await update.message.reply_text("Usage: /leech <direct_download_url>")
+        return
+
+    url = context.args[0]
+    await update.message.reply_text(f"Downloading file from: {url}")
+
+    try:
+        r = requests.get(url, stream=True)
+        filename = url.split("/")[-1]
+
+        with open(filename, "wb") as f:
+            for chunk in r.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+
+        with open(filename, "rb") as f:
+            await update.message.reply_document(f)
+
+    except Exception as e:
+        await update.message.reply_text(f"Error: {str(e)}")
+
+if __name__ == '__main__':
+    app = ApplicationBuilder().token(BOT_TOKEN).build()
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("leech", leech))
+
+    print("Bot is running...")
+    app.run_polling()
